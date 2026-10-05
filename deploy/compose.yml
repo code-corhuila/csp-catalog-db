@@ -1,0 +1,26 @@
+# Migration executor of csp-catalog-db (Annex J). This file defines NO database service and NO volume:
+# the single MongoDB instance of the environment belongs to csp-infra-mongo, which composes this
+# file with `include` and joins the same `platform` network. Run the executor before the API starts.
+name: csp-catalog-db
+
+services:
+  catalog-db-migrate:
+    build:
+      context: .
+      dockerfile: liquibase.Dockerfile
+    profiles: [tooling]
+    volumes:
+      - ../:/workspace:ro
+    entrypoint: ["liquibase",
+      "--search-path=/workspace",
+      "--changelog-file=changelog/changelog-master.yaml",
+      "--database-changelog-table-name=databasechangelog_catalog",
+      "--database-changelog-lock-table-name=databasechangeloglock_catalog",
+      "--url=mongodb://${MONGO_ADMIN_USER:?set MONGO_ADMIN_USER}:${MONGO_ADMIN_PASSWORD:?set MONGO_ADMIN_PASSWORD}@${MONGO_HOST:-mongodb}:27017/${CATALOG_DB_NAME:-catalog_db}?replicaSet=rs0&authSource=admin"]
+    command: ["update"]
+    networks: [platform]
+
+networks:
+  platform:
+    name: platform
+    external: true
