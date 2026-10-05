@@ -59,8 +59,8 @@ jobs:
           lb update
 
           # A second run must apply nothing: the changesets are incremental.
-          lb update | tee second.txt
-          grep -Eq 'Run:[[:space:]]+0' second.txt || { echo "second update applied changesets: not incremental"; exit 1; }
+          lb update | tee "$RUNNER_TEMP/second.txt"
+          grep -Eq 'Run:[[:space:]]+0' "$RUNNER_TEMP/second.txt" || { echo "second update applied changesets: not incremental"; exit 1; }
 
           # The control collections carry the _catalog names (Annex J.6), never the defaults.
           names=$(mongo_eval "db.getCollectionNames().join(',')")
