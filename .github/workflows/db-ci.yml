@@ -1,0 +1,82 @@
+name: Database rebuild
+
+# The whole changelog must build the database from an EMPTY MongoDB, every changeset
+# must undo itself through its inline rollback, and the changelog must apply again
+# afterwards. If the only place the database works is where it was patched by hand,
+# the next environment cannot exist.
+
+on:
+  pull_request:
+    branches: [develop, qa, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DB_NAME: catalog_db
+      NETWORK: catalog-ci
+      MONGO: catalog-mongo
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start MongoDB as a single-node replica set
+        run: |
+          docker network create "$NETWORK"
+          docker run -d --name "$MONGO" --network "$NETWORK" mongo:7 --replSet rs0 --bind_ip_all
+          until docker exec "$MONGO" mongosh --quiet --eval "db.adminCommand('ping').ok" >/dev/null 2>&1; do sleep 2; done
+          docker exec "$MONGO" mongosh --quiet --eval "rs.initiate({_id:'rs0',members:[{_id:0,host:'$MONGO:27017'}]})"
+          for i in $(seq 1 30); do
+            state=$(docker exec "$MONGO" mongosh --quiet --eval "rs.status().members[0].stateStr" 2>/dev/null || true)
+            [ "$state" = "PRIMARY" ] && break
+            sleep 2
+          done
+          test "$state" = "PRIMARY" || { echo "replica set did not reach PRIMARY"; exit 1; }
+
+      - name: Build the executor image
+        run: docker build -f deploy/liquibase.Dockerfile -t catalog-db-migrate:ci deploy
+
+      - name: Apply, roll everything back, apply again
+        run: |
+          lb() {
+            docker run --rm --network "$NETWORK" -v "$PWD:/workspace:ro" --entrypoint liquibase catalog-db-migrate:ci \
+              --search-path=/workspace \
+              --changelog-file=changelog/changelog-master.yaml \
+              --database-changelog-table-name=databasechangelog_catalog \
+              --database-changelog-lock-table-name=databasechangeloglock_catalog \
+              "--url=mongodb://$MONGO:27017/$DB_NAME?replicaSet=rs0" "$@"
+          }
+          mongo_eval() { docker exec "$MONGO" mongosh --quiet "$DB_NAME" --eval "$1"; }
+
+          lb update
+
+          # A second run must apply nothing: the changesets are incremental.
+          lb update | tee second.txt
+          grep -Eq 'Run:[[:space:]]+0' second.txt || { echo "second update applied changesets: not incremental"; exit 1; }
+
+          # The control collections carry the _catalog names (Annex J.6), never the defaults.
+          names=$(mongo_eval "db.getCollectionNames().join(',')")
+          echo "collections: $names"
+          case ",$names," in *,databasechangelog_catalog,*) ;; *) echo "missing databasechangelog_catalog"; exit 1;; esac
+          case ",$names," in *,databasechangeloglock_catalog,*) ;; *) echo "missing databasechangeloglock_catalog"; exit 1;; esac
+          case ",$names," in *,DATABASECHANGELOG,*|*,DATABASECHANGELOGLOCK,*) echo "default control collections found"; exit 1;; esac
+
+          # Every changeset declares its inverse inline: roll back all the applied ones.
+          applied=$(mongo_eval "db.databasechangelog_catalog.countDocuments({})")
+          echo "applied changesets: $applied"
+          if [ "$applied" -gt 0 ]; then lb rollback-count "$applied"; fi
+
+          # Nothing of the application may remain once everything is rolled back.
+          left=$(mongo_eval "db.getCollectionNames().filter(n => !n.startsWith('system.') && !n.startsWith('databasechangelog')).length")
+          test "$left" = 0 || { echo "rollback left $left application collection(s) behind"; exit 1; }
+
+          lb update
+          lb validate
