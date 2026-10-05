@@ -65,6 +65,10 @@ docker compose -f deploy/compose.yml --env-file .env --profile tooling run --rm 
 docker compose -f deploy/compose.yml --env-file .env --profile tooling run --rm catalog-db-migrate validate          # checksums
 ```
 
+The executor logs in as the catalog domain user (`CATALOG_DB_USER` and `CATALOG_DB_PASSWORD`), which `csp-infra-mongo` creates from its
+secrets with access only to `catalog_db` (ADR-006, Annex G). Each domain owns its own database in its environment and this repository
+never connects with an instance-wide account.
+
 A second `update` applies nothing (`Run: 0`): that is the proof that the changesets are incremental.
 
 ## Reversion
