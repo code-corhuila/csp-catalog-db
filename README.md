@@ -11,8 +11,8 @@ This repository is the **only owner of the `catalog_db` database** of the Cinesy
 validators, indexes, seeds and roles. `csp-catalog-api` consumes the database and never versions it. A migration of
 catalog that lives anywhere else is a serious fault (Norma 5.2.1).
 
-The repository currently holds the **base scaffold only**: the layout, the empty changelogs and the rebuild
-verification. The collections of catalog are added later, each with its own changeset and inline reversion.
+The repository holds the layout, the rebuild verification and the collections of catalog added so far (`movies`).
+The rest are added later, each with its own changeset and inline reversion, and its schema test in `tests/`.
 
 ## Stack
 
