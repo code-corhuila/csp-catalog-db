@@ -1,1 +1,41 @@
-databaseChangeLog: []
+databaseChangeLog:
+  - changeSet:
+      id: movies-001-create-collection
+      author: karencaicedo1907
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - collectionExists:
+                collectionName: movies
+      changes:
+        - createCollection:
+            collectionName: movies
+            options: |
+              {
+                validationLevel: "strict",
+                validationAction: "error",
+                validator: {
+                  $jsonSchema: {
+                    bsonType: "object",
+                    required: ["_id", "title", "duration_minutes", "classification", "publication_status", "created_at", "updated_at"],
+                    additionalProperties: false,
+                    properties: {
+                      _id: { bsonType: "string", pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$" },
+                      title: { bsonType: "string", minLength: 1, maxLength: 255 },
+                      synopsis: { bsonType: ["string", "null"] },
+                      duration_minutes: { bsonType: "int", minimum: 1 },
+                      classification: { bsonType: "string", minLength: 1 },
+                      release_date: { bsonType: ["date", "null"] },
+                      genres: { bsonType: ["array", "null"], maxItems: 20, items: { bsonType: "string" } },
+                      poster_url: { bsonType: ["string", "null"] },
+                      publication_status: { enum: ["DRAFT", "PUBLISHED", "ARCHIVED"] },
+                      created_at: { bsonType: "date" },
+                      updated_at: { bsonType: "date" },
+                      deleted_at: { bsonType: ["date", "null"] }
+                    }
+                  }
+                }
+              }
+      rollback:
+        - dropCollection:
+            collectionName: movies
