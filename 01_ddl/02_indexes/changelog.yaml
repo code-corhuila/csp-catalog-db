@@ -14,3 +14,18 @@ databaseChangeLog:
             collectionName: movies
             keys: |
               { publication_status: 1, deleted_at: 1 }
+  - changeSet:
+      id: idempotency-key-002-index-created-at-ttl
+      author: karencaicedo1907
+      changes:
+        - createIndex:
+            collectionName: idempotency_key
+            keys: |
+              { created_at: 1 }
+            options: |
+              { name: "idx_idempotency_key_created_at", expireAfterSeconds: 604800 }
+      rollback:
+        - dropIndex:
+            collectionName: idempotency_key
+            keys: |
+              { created_at: 1 }
