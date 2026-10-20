@@ -84,6 +84,12 @@ if (info !== undefined) {
     genres: Array.from({ length: 21 }, (_, i) => `Genre ${i}`)
   }));
   rejects("rejects an identifier that is not a UUID", validMovie({ _id: "not-a-uuid" }));
+  accepts("accepts a movie with a cast", validMovie({ cast: ["Synthetic Actor", "Another Actor"] }));
+  accepts("accepts a movie with a null cast", validMovie({ cast: null }));
+  rejects("rejects a cast with an item that is not a string", validMovie({ cast: ["Synthetic Actor", 7] }));
+  rejects("rejects more than 50 cast members", validMovie({
+    cast: Array.from({ length: 51 }, (_, i) => `Actor ${i}`)
+  }));
 }
 
 const indexNames = info === undefined ? [] : db.movies.getIndexes().map(i => i.name);
