@@ -80,3 +80,8 @@ jobs:
 
           lb update
           lb validate
+
+          # The validator must accept valid documents, reject invalid ones and the named index must exist.
+          docker cp tests "$MONGO":/tests
+          docker exec "$MONGO" mongosh --quiet "$DB_NAME" /tests/movies_schema_test.js
+          docker exec "$MONGO" mongosh --quiet "$DB_NAME" /tests/idempotency_key_schema_test.js
