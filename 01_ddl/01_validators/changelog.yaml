@@ -61,3 +61,50 @@ databaseChangeLog:
                   }
                 }
               }
+  - changeSet:
+      id: idempotency-key-003-validator-room-operations
+      author: karencaicedo1907
+      changes:
+        - runCommand:
+            command: |
+              {
+                collMod: "idempotency_key",
+                validationLevel: "strict",
+                validationAction: "error",
+                validator: {
+                  $jsonSchema: {
+                    bsonType: "object",
+                    required: ["_id", "operation", "request_hash", "resource_id", "created_at"],
+                    additionalProperties: false,
+                    properties: {
+                      _id: { bsonType: "string", minLength: 8, maxLength: 128 },
+                      operation: { enum: ["CREATE_MOVIE", "UPDATE_MOVIE", "ARCHIVE_MOVIE", "CREATE_ROOM", "UPDATE_ROOM", "ARCHIVE_ROOM"] },
+                      request_hash: { bsonType: "string", pattern: "^[0-9a-f]{64}$" },
+                      resource_id: { bsonType: "string", pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$" },
+                      created_at: { bsonType: "date" }
+                    }
+                  }
+                }
+              }
+      rollback:
+        - runCommand:
+            command: |
+              {
+                collMod: "idempotency_key",
+                validationLevel: "strict",
+                validationAction: "error",
+                validator: {
+                  $jsonSchema: {
+                    bsonType: "object",
+                    required: ["_id", "operation", "request_hash", "resource_id", "created_at"],
+                    additionalProperties: false,
+                    properties: {
+                      _id: { bsonType: "string", minLength: 8, maxLength: 128 },
+                      operation: { enum: ["CREATE_MOVIE", "UPDATE_MOVIE", "ARCHIVE_MOVIE"] },
+                      request_hash: { bsonType: "string", pattern: "^[0-9a-f]{64}$" },
+                      resource_id: { bsonType: "string", pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$" },
+                      created_at: { bsonType: "date" }
+                    }
+                  }
+                }
+              }
