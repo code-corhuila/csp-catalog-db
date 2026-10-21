@@ -5,6 +5,10 @@ introduces it.
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-10-21
+
+HU-CATALOG-001 and the base scaffold of the database promoted from `qa` to `main`.
+
 ### Added
 - `movies` collection with its `$jsonSchema` validator (`strict`, `error`, `additionalProperties: false`) and the
   index `idx_movies_publication_status_deleted_at` (HU-CATALOG-001).
