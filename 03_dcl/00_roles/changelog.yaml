@@ -1,1 +1,37 @@
-databaseChangeLog: []
+databaseChangeLog:
+  - changeSet:
+      id: catalog-roles-001-create-outbox-reader
+      author: karencaicedo1907
+      changes:
+        - runCommand:
+            command: |
+              {
+                createRole: "catalog_outbox_reader",
+                privileges: [
+                  { resource: { db: "catalog_db", collection: "outbox_event" }, actions: ["find"] }
+                ],
+                roles: []
+              }
+      rollback:
+        - runCommand:
+            command: |
+              {
+                dropRole: "catalog_outbox_reader"
+              }
+  - changeSet:
+      id: catalog-roles-002-grant-outbox-reader-to-worker-app
+      author: karencaicedo1907
+      changes:
+        - runCommand:
+            command: |
+              {
+                grantRolesToUser: "worker_app",
+                roles: [{ role: "catalog_outbox_reader", db: "catalog_db" }]
+              }
+      rollback:
+        - runCommand:
+            command: |
+              {
+                revokeRolesFromUser: "worker_app",
+                roles: [{ role: "catalog_outbox_reader", db: "catalog_db" }]
+              }

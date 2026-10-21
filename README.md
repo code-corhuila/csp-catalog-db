@@ -71,6 +71,14 @@ never connects with an instance-wide account.
 
 A second `update` applies nothing (`Run: 0`): that is the proof that the changesets are incremental.
 
+### Outbox reader role
+
+`03_dcl/00_roles` creates the role `catalog_outbox_reader` (only `find` on `catalog_db.outbox_event`, no inherited
+roles) and grants it to the user `worker_app` of `catalog_db` (ADR-019). The user is not created here: `csp-infra-mongo`
+creates `worker_app` with no roles before this migration runs (Annex J.5.5 order); without it the grant fails with
+`UserNotFound` (`Could not find user "worker_app" for db "catalog_db"`). The role creation fails if the role already exists outside the changelog, so
+a hand-made role is reported instead of being adopted silently.
+
 ## Reversion
 
 Each changeset declares its inverse inline (`dropCollection`, `dropIndex`, ...) in its `rollback` block, so no
