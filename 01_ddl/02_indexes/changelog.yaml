@@ -29,3 +29,18 @@ databaseChangeLog:
             collectionName: idempotency_key
             keys: |
               { created_at: 1 }
+  - changeSet:
+      id: rooms-002-index-name-unique
+      author: karencaicedo1907
+      changes:
+        - createIndex:
+            collectionName: rooms
+            keys: |
+              { name: 1 }
+            options: |
+              { name: "idx_rooms_name", unique: true }
+      rollback:
+        - dropIndex:
+            collectionName: rooms
+            keys: |
+              { name: 1 }
