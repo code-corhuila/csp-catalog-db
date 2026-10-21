@@ -104,3 +104,18 @@ databaseChangeLog:
             collectionName: outbox_event
             keys: |
               { created_at: 1 }
+  - changeSet:
+      id: showtimes-004-index-status-starts-at
+      author: karencaicedo1907
+      changes:
+        - createIndex:
+            collectionName: showtimes
+            keys: |
+              { status: 1, starts_at: 1 }
+            options: |
+              { name: "idx_showtimes_status_starts_at" }
+      rollback:
+        - dropIndex:
+            collectionName: showtimes
+            keys: |
+              { status: 1, starts_at: 1 }
