@@ -122,3 +122,84 @@ databaseChangeLog:
       rollback:
         - dropCollection:
             collectionName: rooms
+  - changeSet:
+      id: showtimes-001-create-collection
+      author: karencaicedo1907
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - collectionExists:
+                collectionName: showtimes
+      changes:
+        - createCollection:
+            collectionName: showtimes
+            options: |
+              {
+                validationLevel: "strict",
+                validationAction: "error",
+                validator: {
+                  $and: [
+                    {
+                      $jsonSchema: {
+                        bsonType: "object",
+                        required: ["_id", "movie_id", "room_id", "movie_title_snapshot", "room_name_snapshot", "starts_at", "ends_at", "price_cents", "status", "created_at", "updated_at"],
+                        additionalProperties: false,
+                        properties: {
+                          _id: { bsonType: "string", pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$" },
+                          movie_id: { bsonType: "string", pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$" },
+                          room_id: { bsonType: "string", pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$" },
+                          movie_title_snapshot: { bsonType: "string", minLength: 1 },
+                          room_name_snapshot: { bsonType: "string", minLength: 1 },
+                          starts_at: { bsonType: "date" },
+                          ends_at: { bsonType: "date" },
+                          price_cents: { bsonType: "long", minimum: 0 },
+                          audio_language: { bsonType: ["string", "null"] },
+                          subtitle_language: { bsonType: ["string", "null"] },
+                          status: { enum: ["SCHEDULED", "CANCELLED", "COMPLETED"] },
+                          created_at: { bsonType: "date" },
+                          updated_at: { bsonType: "date" },
+                          deleted_at: { bsonType: ["date", "null"] }
+                        }
+                      }
+                    },
+                    { $expr: { $gt: ["$ends_at", "$starts_at"] } }
+                  ]
+                }
+              }
+      rollback:
+        - dropCollection:
+            collectionName: showtimes
+  - changeSet:
+      id: outbox-event-001-create-collection
+      author: karencaicedo1907
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - collectionExists:
+                collectionName: outbox_event
+      changes:
+        - createCollection:
+            collectionName: outbox_event
+            options: |
+              {
+                validationLevel: "strict",
+                validationAction: "error",
+                validator: {
+                  $jsonSchema: {
+                    bsonType: "object",
+                    required: ["_id", "aggregate_type", "aggregate_id", "event_type", "payload", "created_at"],
+                    additionalProperties: false,
+                    properties: {
+                      _id: { bsonType: "string", pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$" },
+                      aggregate_type: { enum: ["Showtime"] },
+                      aggregate_id: { bsonType: "string", pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$" },
+                      event_type: { enum: ["ShowtimePublished"] },
+                      payload: { bsonType: "object" },
+                      created_at: { bsonType: "date" }
+                    }
+                  }
+                }
+              }
+      rollback:
+        - dropCollection:
+            collectionName: outbox_event
