@@ -21,6 +21,8 @@ introduces it.
 - `outbox_event` collection with its validator, the relay index `idx_outbox_event_created_at_id` and the TTL index
   `idx_outbox_event_created_at_ttl` (30 days), for the transactional outbox of ADR-019 (HU-CATALOG-003).
 - `tests/showtimes_schema_test.js` and `tests/outbox_event_schema_test.js`, run by `db-ci.yml` after the rebuild cycle.
+- Index `idx_showtimes_status_starts_at` on `showtimes` (`status`, `starts_at`), which answers the public billboard query
+  (scheduled showtimes in a start window, ordered by start), with its schema test checks (HU-CATALOG-004).
 - Note: the read-only role `catalog_outbox_reader` is not created here; the executor cannot create roles, so it is a
   follow-up for `csp-infra-mongo`.
 
