@@ -57,6 +57,10 @@ if (info !== undefined) {
   rejects("rejects a key shorter than 8 characters", validKey({ _id: "short" }));
   rejects("rejects a key longer than 128 characters", validKey({ _id: "k".repeat(129) }));
   rejects("rejects an operation outside the enum", validKey({ operation: "DELETE_MOVIE" }));
+  accepts("accepts the CREATE_ROOM operation", validKey({ operation: "CREATE_ROOM" }));
+  accepts("accepts the UPDATE_ROOM operation", validKey({ operation: "UPDATE_ROOM" }));
+  accepts("accepts the ARCHIVE_ROOM operation", validKey({ operation: "ARCHIVE_ROOM" }));
+  rejects("rejects the DELETE_ROOM operation", validKey({ operation: "DELETE_ROOM" }));
   rejects("rejects a request hash that is not SHA-256 hex", validKey({ request_hash: "not-a-hash" }));
   rejects("rejects a resource id that is not a UUID", validKey({ resource_id: "not-a-uuid" }));
   rejects("rejects an undeclared field", validKey({ response_body: "{}" }));
