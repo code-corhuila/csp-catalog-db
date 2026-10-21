@@ -25,6 +25,8 @@ HU-CATALOG-001, HU-CATALOG-002, HU-CATALOG-003 and the base scaffold of the data
 - `outbox_event` collection with its validator, the relay index `idx_outbox_event_created_at_id` and the TTL index
   `idx_outbox_event_created_at_ttl` (30 days), for the transactional outbox of ADR-019 (HU-CATALOG-003).
 - `tests/showtimes_schema_test.js` and `tests/outbox_event_schema_test.js`, run by `db-ci.yml` after the rebuild cycle.
+- Index `idx_showtimes_status_starts_at` on `showtimes` (`status`, `starts_at`), which answers the public billboard query
+  (scheduled showtimes in a start window, ordered by start), with its schema test checks (HU-CATALOG-004).
 - Role `catalog_outbox_reader` (only `find` on `catalog_db.outbox_event`, no inherited roles) and its grant to
   `worker_app`, through the changesets `catalog-roles-001-create-outbox-reader` and
   `catalog-roles-002-grant-outbox-reader-to-worker-app`, for the outbox relay of `csp-worker` (HU-CATALOG-003, ADR-019,

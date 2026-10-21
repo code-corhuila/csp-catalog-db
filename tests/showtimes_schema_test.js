@@ -1,6 +1,6 @@
 // Checks the structure of catalog_db.showtimes the way the service will meet it (HU-CATALOG-003):
 // the validator accepts a valid showtime, rejects every invalid one (including an end that is not
-// after the start and a price that is not a long), and the two named indexes exist.
+// after the start and a price that is not a long), and the three named indexes exist.
 // Run with: mongosh --quiet <uri>/catalog_db tests/showtimes_schema_test.js
 // Exits non-zero on any failure and prints the totals, so "0 checks" cannot pass as OK.
 
@@ -99,6 +99,37 @@ check("the movie index is on movie_id then starts_at",
 check("index idx_showtimes_room_id_starts_at exists", byRoom !== undefined);
 check("the room index is on room_id then starts_at",
   byRoom !== undefined && JSON.stringify(byRoom.key) === JSON.stringify({ room_id: 1, starts_at: 1 }));
+
+const byStatus = indexes.find(i => i.name === "idx_showtimes_status_starts_at");
+check("index idx_showtimes_status_starts_at exists", byStatus !== undefined);
+check("the status index is on status then starts_at",
+  byStatus !== undefined && JSON.stringify(byStatus.key) === JSON.stringify({ status: 1, starts_at: 1 }));
+check("the status index is neither unique nor TTL",
+  byStatus !== undefined && byStatus.unique === undefined && byStatus.expireAfterSeconds === undefined);
+
+function indexNames(plan) {
+  if (plan === null || typeof plan !== "object") {
+    return [];
+  }
+  return Object.keys(plan).flatMap(k => (k === "indexName" ? [plan[k]] : indexNames(plan[k])));
+}
+
+if (info !== undefined && byStatus !== undefined) {
+  const billboard = [
+    validShowtime({ _id: "aaaaaaaa-0000-4000-8000-000000000001", starts_at: new Date("2031-03-01T20:00:00Z"), ends_at: new Date("2031-03-01T22:00:00Z") }),
+    validShowtime({ _id: "aaaaaaaa-0000-4000-8000-000000000002", starts_at: new Date("2031-03-01T16:00:00Z"), ends_at: new Date("2031-03-01T18:00:00Z") }),
+    validShowtime({ _id: "aaaaaaaa-0000-4000-8000-000000000003", status: "CANCELLED", starts_at: new Date("2031-03-01T18:00:00Z"), ends_at: new Date("2031-03-01T20:00:00Z") })
+  ];
+  db.showtimes.insertMany(billboard);
+  const window = { status: "SCHEDULED", starts_at: { $gte: new Date("2031-03-01T00:00:00Z"), $lt: new Date("2031-03-02T00:00:00Z") } };
+  const hinted = db.showtimes.find(window).sort({ starts_at: 1 }).hint("idx_showtimes_status_starts_at").toArray();
+  check("the billboard query through the status index returns the scheduled showtimes in start order",
+    JSON.stringify(hinted.map(d => d._id)) === JSON.stringify(["aaaaaaaa-0000-4000-8000-000000000002", "aaaaaaaa-0000-4000-8000-000000000001"]));
+  const plan = db.showtimes.find(window).sort({ starts_at: 1 }).explain("queryPlanner");
+  check("the planner picks idx_showtimes_status_starts_at for the billboard query",
+    indexNames(plan.queryPlanner.winningPlan).includes("idx_showtimes_status_starts_at"));
+  db.showtimes.deleteMany({ _id: { $in: billboard.map(d => d._id) } });
+}
 
 print(`TOTAL ${passed + failed} checks, ${passed} passed, ${failed} failed`);
 if (failed > 0 || passed === 0) {
