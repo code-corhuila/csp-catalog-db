@@ -19,6 +19,14 @@ HU-CATALOG-001, HU-CATALOG-002 and the base scaffold of the database promoted fr
 - `rooms` collection with its `$jsonSchema` validator (`strict`, `error`, `additionalProperties: false`, embedded seats
   of at most 500 items) and the unique index `idx_rooms_name` (HU-CATALOG-002).
 - `tests/rooms_schema_test.js`, run by `db-ci.yml` after the rebuild cycle.
+- `showtimes` collection with its validator (`strict`, `error`, `additionalProperties: false`, `price_cents` as `long`,
+  and `ends_at` greater than `starts_at` through `$expr`) and the indexes `idx_showtimes_movie_id_starts_at` and
+  `idx_showtimes_room_id_starts_at` (HU-CATALOG-003).
+- `outbox_event` collection with its validator, the relay index `idx_outbox_event_created_at_id` and the TTL index
+  `idx_outbox_event_created_at_ttl` (30 days), for the transactional outbox of ADR-019 (HU-CATALOG-003).
+- `tests/showtimes_schema_test.js` and `tests/outbox_event_schema_test.js`, run by `db-ci.yml` after the rebuild cycle.
+- Note: the read-only role `catalog_outbox_reader` is not created here; the executor cannot create roles, so it is a
+  follow-up for `csp-infra-mongo`.
 
 ### Changed
 - The `movies` validator accepts `cast` (array of strings, at most 50) through the `collMod` changeset
@@ -26,3 +34,8 @@ HU-CATALOG-001, HU-CATALOG-002 and the base scaffold of the database promoted fr
 - The `idempotency_key` validator accepts the operations `CREATE_ROOM`, `UPDATE_ROOM` and `ARCHIVE_ROOM` through the
   `collMod` changeset `idempotency-key-003-validator-room-operations`, for the `Idempotency-Key` of the room writes
   (ADR-037, HU-CATALOG-002).
+- The `rooms` validator accepts the optional `schedule_version` (int, minimum 0), the counter the API increments in the
+  transaction that schedules a showtime, through the `collMod` changeset `rooms-003-validator-add-schedule-version`
+  (HU-CATALOG-003).
+- The `idempotency_key` validator accepts the operations `CREATE_SHOWTIME`, `UPDATE_SHOWTIME` and `CANCEL_SHOWTIME`
+  through the `collMod` changeset `idempotency-key-004-validator-showtime-operations` (ADR-037, HU-CATALOG-003).

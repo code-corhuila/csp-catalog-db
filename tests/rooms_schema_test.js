@@ -86,6 +86,10 @@ if (info !== undefined) {
   }));
   rejects("rejects a seat type outside the enum", validRoom({ seats: [seat({ type: "PREMIUM" })] }));
   rejects("rejects a seat column of zero", validRoom({ seats: [seat({ column: NumberInt(0) })] }));
+  accepts("accepts a room with a schedule version of 0", validRoom({ schedule_version: NumberInt(0) }));
+  accepts("accepts a room with a schedule version of 5", validRoom({ schedule_version: NumberInt(5) }));
+  rejects("rejects a negative schedule version", validRoom({ schedule_version: NumberInt(-1) }));
+  rejects("rejects a schedule version that is a string", validRoom({ schedule_version: "1" }));
   rejects("rejects an undeclared field on the room", validRoom({ floor: 2 }));
   rejects("rejects a missing name", without("name"));
   rejects("rejects a name of 101 characters", validRoom({ name: "x".repeat(101) }));
