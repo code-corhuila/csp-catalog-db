@@ -23,8 +23,11 @@ introduces it.
 - `tests/showtimes_schema_test.js` and `tests/outbox_event_schema_test.js`, run by `db-ci.yml` after the rebuild cycle.
 - Index `idx_showtimes_status_starts_at` on `showtimes` (`status`, `starts_at`), which answers the public billboard query
   (scheduled showtimes in a start window, ordered by start), with its schema test checks (HU-CATALOG-004).
-- Note: the read-only role `catalog_outbox_reader` is not created here; the executor cannot create roles, so it is a
-  follow-up for `csp-infra-mongo`.
+- Role `catalog_outbox_reader` (only `find` on `catalog_db.outbox_event`, no inherited roles) and its grant to
+  `worker_app`, through the changesets `catalog-roles-001-create-outbox-reader` and
+  `catalog-roles-002-grant-outbox-reader-to-worker-app`, for the outbox relay of `csp-worker` (HU-CATALOG-003, ADR-019,
+  ADR-039).
+- `tests/outbox_reader_role_test.js`, run by `db-ci.yml` after the rebuild cycle.
 
 ### Changed
 - The `movies` validator accepts `cast` (array of strings, at most 50) through the `collMod` changeset
