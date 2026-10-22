@@ -7,7 +7,7 @@ introduces it.
 
 ## [3.0.0] - 2026-10-21
 
-HU-CATALOG-001, HU-CATALOG-002, HU-CATALOG-003 and the base scaffold of the database promoted from `qa` to `main`.
+HU-CATALOG-001, HU-CATALOG-002, HU-CATALOG-003, HU-CATALOG-004 and the base scaffold of the database promoted from `qa` to `main`.
 
 ### Added
 - `movies` collection with its `$jsonSchema` validator (`strict`, `error`, `additionalProperties: false`) and the
