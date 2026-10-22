@@ -61,6 +61,10 @@ if (info !== undefined) {
   accepts("accepts the UPDATE_ROOM operation", validKey({ operation: "UPDATE_ROOM" }));
   accepts("accepts the ARCHIVE_ROOM operation", validKey({ operation: "ARCHIVE_ROOM" }));
   rejects("rejects the DELETE_ROOM operation", validKey({ operation: "DELETE_ROOM" }));
+  accepts("accepts the CREATE_SHOWTIME operation", validKey({ operation: "CREATE_SHOWTIME" }));
+  accepts("accepts the UPDATE_SHOWTIME operation", validKey({ operation: "UPDATE_SHOWTIME" }));
+  accepts("accepts the CANCEL_SHOWTIME operation", validKey({ operation: "CANCEL_SHOWTIME" }));
+  rejects("rejects the DELETE_SHOWTIME operation", validKey({ operation: "DELETE_SHOWTIME" }));
   rejects("rejects a request hash that is not SHA-256 hex", validKey({ request_hash: "not-a-hash" }));
   rejects("rejects a resource id that is not a UUID", validKey({ resource_id: "not-a-uuid" }));
   rejects("rejects an undeclared field", validKey({ response_body: "{}" }));
