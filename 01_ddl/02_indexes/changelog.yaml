@@ -119,3 +119,35 @@ databaseChangeLog:
             collectionName: showtimes
             keys: |
               { status: 1, starts_at: 1 }
+  - changeSet:
+      id: movies-004-index-title-synopsis-text
+      author: karencaicedo1907
+      changes:
+        - createIndex:
+            collectionName: movies
+            keys: |
+              { title: "text", synopsis: "text" }
+            options: |
+              { name: "idx_movies_title_synopsis_text", default_language: "none" }
+      rollback:
+        - runCommand:
+            command: |
+              {
+                dropIndexes: "movies",
+                index: "idx_movies_title_synopsis_text"
+              }
+  - changeSet:
+      id: movies-005-index-publication-status-genres
+      author: karencaicedo1907
+      changes:
+        - createIndex:
+            collectionName: movies
+            keys: |
+              { publication_status: 1, genres: 1 }
+            options: |
+              { name: "idx_movies_publication_status_genres" }
+      rollback:
+        - dropIndex:
+            collectionName: movies
+            keys: |
+              { publication_status: 1, genres: 1 }

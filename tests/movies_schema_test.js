@@ -1,6 +1,7 @@
 // Checks the structure of catalog_db.movies the way the service will meet it:
-// the validator accepts a valid document, rejects every invalid one, and the
-// named index exists. Run with: mongosh --quiet <uri>/catalog_db tests/movies_schema_test.js
+// the validator accepts a valid document, rejects every invalid one, the named indexes exist and
+// answer the queries of the movie search (HU-CATALOG-006).
+// Run with: mongosh --quiet <uri>/catalog_db tests/movies_schema_test.js
 // Exits non-zero on any failure and prints the totals, so "0 checks" cannot pass as OK.
 
 let passed = 0;
@@ -95,6 +96,65 @@ if (info !== undefined) {
 const indexNames = info === undefined ? [] : db.movies.getIndexes().map(i => i.name);
 check("index idx_movies_publication_status_deleted_at exists",
   indexNames.includes("idx_movies_publication_status_deleted_at"));
+
+const indexes = info === undefined ? [] : db.movies.getIndexes();
+const byText = indexes.find(i => i.name === "idx_movies_title_synopsis_text");
+check("index idx_movies_title_synopsis_text exists", byText !== undefined);
+check("the text index covers title and synopsis and does not stem",
+  byText !== undefined && JSON.stringify(Object.keys(byText.weights).sort()) === JSON.stringify(["synopsis", "title"])
+  && byText.default_language === "none");
+check("the text index is neither unique nor TTL",
+  byText !== undefined && byText.unique === undefined && byText.expireAfterSeconds === undefined);
+const byGenres = indexes.find(i => i.name === "idx_movies_publication_status_genres");
+check("index idx_movies_publication_status_genres exists", byGenres !== undefined);
+check("the genres index is on publication_status then genres",
+  byGenres !== undefined && JSON.stringify(byGenres.key) === JSON.stringify({ publication_status: 1, genres: 1 }));
+check("the genres index is neither unique nor TTL",
+  byGenres !== undefined && byGenres.unique === undefined && byGenres.expireAfterSeconds === undefined);
+
+function planIndexNames(plan) {
+  if (plan === null || typeof plan !== "object") {
+    return [];
+  }
+  return Object.keys(plan).flatMap(k => (k === "indexName" ? [plan[k]] : planIndexNames(plan[k])));
+}
+
+if (info !== undefined && byText !== undefined && byGenres !== undefined) {
+  const published = { publication_status: "PUBLISHED" };
+  const searchable = [
+    validMovie({ _id: "bbbbbbbb-0000-4000-8000-000000000001", title: "Space Action", synopsis: "A pilot crosses the galaxy.",
+      genres: ["Ciencia ficción", "Acción"], duration_minutes: NumberInt(110), ...published }),
+    validMovie({ _id: "bbbbbbbb-0000-4000-8000-000000000002", title: "Quiet Garden", synopsis: "An action of kindness in a garden.",
+      genres: ["Drama"], duration_minutes: NumberInt(95), ...published }),
+    validMovie({ _id: "bbbbbbbb-0000-4000-8000-000000000003", title: "Galaxy Quest Space", synopsis: null,
+      genres: ["Ciencia ficción"], duration_minutes: NumberInt(150), ...published }),
+    validMovie({ _id: "bbbbbbbb-0000-4000-8000-000000000004", title: "Space Action Draft", synopsis: "Not published yet.",
+      genres: ["Ciencia ficción"], duration_minutes: NumberInt(100) })
+  ];
+  db.movies.insertMany(searchable);
+  const ids = filter => db.movies.find(Object.assign({}, published, filter)).toArray().map(d => d._id.slice(-1)).sort();
+  const text = search => ({ $text: { $search: search } });
+  check("a text query finds the word in the title or in the synopsis",
+    JSON.stringify(ids(text("action"))) === JSON.stringify(["1", "2"]));
+  check("a text query ignores case",
+    JSON.stringify(ids(text("ACTION"))) === JSON.stringify(["1", "2"]));
+  check("a text query matches whole words, not fragments", ids(text("act")).length === 0);
+  check("quoted words must all be present",
+    JSON.stringify(ids(text("\"space\" \"galaxy\""))) === JSON.stringify(["1", "3"]));
+  check("quoted words that no movie has together match nothing", ids(text("\"space\" \"garden\"")).length === 0);
+  check("a draft movie is not returned by the published filter",
+    !ids(text("draft")).includes("4"));
+  check("the genre filter is the exact stored value",
+    JSON.stringify(ids({ genres: "Ciencia ficción" })) === JSON.stringify(["1", "3"]) && ids({ genres: "ciencia ficcion" }).length === 0);
+  check("the filters combine with AND",
+    JSON.stringify(ids(Object.assign(text("space"), { genres: "Ciencia ficción", duration_minutes: { $lte: 120 } }))) === JSON.stringify(["1"]));
+  const planOf = filter => db.movies.find(Object.assign({}, published, filter)).explain("queryPlanner").queryPlanner.winningPlan;
+  check("the planner picks the text index for a text query",
+    planIndexNames(planOf(text("action"))).includes("idx_movies_title_synopsis_text"));
+  check("the planner picks the genres index for a genre filter",
+    planIndexNames(planOf({ genres: "Ciencia ficción" })).includes("idx_movies_publication_status_genres"));
+  db.movies.deleteMany({ _id: { $in: searchable.map(d => d._id) } });
+}
 
 print(`TOTAL ${passed + failed} checks, ${passed} passed, ${failed} failed`);
 if (failed > 0 || passed === 0) {
