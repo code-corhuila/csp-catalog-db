@@ -28,6 +28,11 @@ introduces it.
   `catalog-roles-002-grant-outbox-reader-to-worker-app`, for the outbox relay of `csp-worker` (HU-CATALOG-003, ADR-019,
   ADR-039).
 - `tests/outbox_reader_role_test.js`, run by `db-ci.yml` after the rebuild cycle.
+- Indexes of the movie search of the public route `GET /billboard/movies` (HU-CATALOG-006, ADR-044): the text index
+  `idx_movies_title_synopsis_text` on `title` and `synopsis` (`default_language: none`, so no stemming) through the changeset
+  `movies-004-index-title-synopsis-text`, and `idx_movies_publication_status_genres` on `publication_status` and `genres`
+  through `movies-005-index-publication-status-genres`; `tests/movies_schema_test.js` checks both indexes and that the
+  text, genre and duration queries of the search return the expected movies and use them.
 
 ### Changed
 - The `movies` validator accepts `cast` (array of strings, at most 50) through the `collMod` changeset
