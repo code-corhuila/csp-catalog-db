@@ -41,11 +41,12 @@ jobs:
           done
           test "$state" = "PRIMARY" || { echo "replica set did not reach PRIMARY"; exit 1; }
 
-      - name: Create worker_app as csp-infra-mongo does
-        # The outbox reader role is granted to worker_app, which the init script of csp-infra-mongo creates with no
-        # roles before the migration runs. The password is a throwaway of this disposable container.
+      - name: Create worker_app and catalog_app as csp-infra-mongo does
+        # The outbox reader role is granted to worker_app and the writer role to catalog_app, the login users that the
+        # init script of csp-infra-mongo creates with no roles before the migration runs. The passwords are throwaways
+        # of this disposable container.
         run: |
-          docker exec "$MONGO" mongosh --quiet --eval "db.getSiblingDB('$DB_NAME').createUser({user:'worker_app',pwd:'throwaway-ci-only',roles:[]})"
+          docker exec "$MONGO" mongosh --quiet --eval "const d=db.getSiblingDB('$DB_NAME'); d.createUser({user:'worker_app',pwd:'throwaway-ci-only',roles:[]}); d.createUser({user:'catalog_app',pwd:'throwaway-ci-only',roles:[]})"
 
       - name: Build the executor image
         run: docker build -f deploy/liquibase.Dockerfile -t catalog-db-migrate:ci deploy
@@ -92,3 +93,4 @@ jobs:
           docker exec "$MONGO" mongosh --quiet "$DB_NAME" /tests/movies_schema_test.js
           docker exec "$MONGO" mongosh --quiet "$DB_NAME" /tests/idempotency_key_schema_test.js
           docker exec "$MONGO" mongosh --quiet "$DB_NAME" /tests/outbox_reader_role_test.js
+          docker exec "$MONGO" mongosh --quiet "$DB_NAME" /tests/catalog_writer_role_test.js
