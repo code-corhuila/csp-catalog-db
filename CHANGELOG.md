@@ -10,6 +10,10 @@ introduces it.
 HU-CATALOG-001, HU-CATALOG-002, HU-CATALOG-003, HU-CATALOG-004, HU-CATALOG-006 and the base scaffold of the database promoted from `qa` to `main`.
 
 ### Added
+- Role `catalog_writer` (`find`, `insert`, `update` and `remove` on the collections of `catalog_db`, no inherited roles, no password)
+  and its grant to the login user `catalog_app` of the API, in `03_dcl/00_roles` (`catalog-roles-003` and `-004`), with
+  `tests/catalog_writer_role_test.js` run by `db-ci.yml`. The user `catalog_app` is not created here: `csp-infra-mongo`
+  creates it before the migration. The API needs no other privilege: it creates no collection, index or user.
 - `movies` collection with its `$jsonSchema` validator (`strict`, `error`, `additionalProperties: false`) and the
   index `idx_movies_publication_status_deleted_at` (HU-CATALOG-001).
 - `tests/movies_schema_test.js`, run by `db-ci.yml` after the rebuild cycle.
