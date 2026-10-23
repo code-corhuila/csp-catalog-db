@@ -79,6 +79,14 @@ creates `worker_app` with no roles before this migration runs (Annex J.5.5 order
 `UserNotFound` (`Could not find user "worker_app" for db "catalog_db"`). The role creation fails if the role already exists outside the changelog, so
 a hand-made role is reported instead of being adopted silently.
 
+### Writer role
+
+`catalog_writer` holds `find`, `insert`, `update` and `remove` on the collections of `catalog_db`, inherits no role and has no
+password. It is granted to the user `catalog_app`, the login of `csp-catalog-api`, which `csp-infra-mongo` creates with no
+roles before this migration runs; without it the grant fails with `UserNotFound`. `insert` also lets the holder create a
+collection that does not exist yet, as MongoDB defines it; creating indexes, dropping collections and managing users are
+not granted.
+
 ## Reversion
 
 Each changeset declares its inverse inline (`dropCollection`, `dropIndex`, ...) in its `rollback` block, so no
