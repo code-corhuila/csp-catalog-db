@@ -10,6 +10,8 @@ introduces it.
 HU-CATALOG-001, HU-CATALOG-002, HU-CATALOG-003, HU-CATALOG-004, HU-CATALOG-006, the `catalog_writer` role of the API login (technical task `chore(grants)`) and the base scaffold of the database promoted from `qa` to `main`.
 
 ### Added
+- `tests/catalog_app_privileges_test.js`, run by `db-ci.yml` as `catalog_app` after the migration (TD-042, ADR-049): the API login reads and writes the
+  collections and cannot create an index, a user or a role, drop a collection or read another database.
 - Role `catalog_writer` (`find`, `insert`, `update` and `remove` on the collections of `catalog_db`, no inherited roles, no password)
   and its grant to the login user `catalog_app` of the API, in `03_dcl/00_roles` (`catalog-roles-003` and `-004`), with
   `tests/catalog_writer_role_test.js` run by `db-ci.yml`. The user `catalog_app` is not created here: `csp-infra-mongo`
@@ -43,6 +45,9 @@ HU-CATALOG-001, HU-CATALOG-002, HU-CATALOG-003, HU-CATALOG-004, HU-CATALOG-006, 
   text, genre and duration queries of the search return the expected movies and use them.
 
 ### Changed
+- `db-ci.yml` uses the same MongoDB as `csp-infra-mongo` (7.0.14 with authentication, key file and replica set of one node), creates the logins `catalog_migrator`,
+  `catalog_app` and `worker_app`, and applies the changelog with the executor as `catalog_migrator` instead of an unauthenticated server (TD-042).
+- The executor image is fixed: Liquibase 4.29.2, `liquibase-mongodb` 4.29.1 and the Java driver 3.12.14 (TD-043, Annex G).
 - The `movies` validator accepts `cast` (array of strings, at most 50) through the `collMod` changeset
   `movies-003-validator-add-cast`, as the catalog data model already lists it (HU-CATALOG-001).
 - The `idempotency_key` validator accepts the operations `CREATE_ROOM`, `UPDATE_ROOM` and `ARCHIVE_ROOM` through the

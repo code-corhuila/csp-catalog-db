@@ -23,30 +23,34 @@ jobs:
     timeout-minutes: 15
     env:
       DB_NAME: catalog_db
-      NETWORK: catalog-ci
       MONGO: catalog-mongo
     steps:
       - uses: actions/checkout@v4
 
-      - name: Start MongoDB as a single-node replica set
+      - name: Start MongoDB with authentication, a key file and a replica set of one node
+        # The same MongoDB as the instance of csp-infra-mongo (7.0.14, authentication, key file, replica set rs0). The member
+        # is localhost:27017 so that the executor, which shares the network of this container, and the tests reach it.
         run: |
-          docker network create "$NETWORK"
-          docker run -d --name "$MONGO" --network "$NETWORK" mongo:7 --replSet rs0 --bind_ip_all
-          until docker exec "$MONGO" mongosh --quiet --eval "db.adminCommand('ping').ok" >/dev/null 2>&1; do sleep 2; done
-          docker exec "$MONGO" mongosh --quiet --eval "rs.initiate({_id:'rs0',members:[{_id:0,host:'$MONGO:27017'}]})"
-          for i in $(seq 1 30); do
-            state=$(docker exec "$MONGO" mongosh --quiet --eval "rs.status().members[0].stateStr" 2>/dev/null || true)
-            [ "$state" = "PRIMARY" ] && break
-            sleep 2
+          docker run -d --name "$MONGO" -p 27017:27017 \
+            -e MONGO_INITDB_ROOT_USERNAME=ci_admin -e MONGO_INITDB_ROOT_PASSWORD=ci-admin-password \
+            --entrypoint sh mongo:7.0.14 -c "printf '%s' 'cikeyfile0123456789abcdefghijklmnopqrstuvwxyz' > /data/keyfile && chmod 400 /data/keyfile && chown mongodb:mongodb /data/keyfile && exec docker-entrypoint.sh mongod --replSet rs0 --keyFile /data/keyfile --bind_ip_all"
+          admin() { docker exec "$MONGO" mongosh --quiet -u ci_admin -p ci-admin-password --authenticationDatabase admin --eval "$1"; }
+          for i in $(seq 1 40); do
+            state=$(admin "try { rs.status().myState } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'localhost:27017'}]}); 0 }" 2>&1 | tail -1)
+            [ "$state" = "1" ] && break
+            sleep 3
           done
-          test "$state" = "PRIMARY" || { echo "replica set did not reach PRIMARY"; exit 1; }
+          test "$state" = "1" || { echo "replica set did not reach PRIMARY"; exit 1; }
 
-      - name: Create worker_app and catalog_app as csp-infra-mongo does
-        # The outbox reader role is granted to worker_app and the writer role to catalog_app, the login users that the
-        # init script of csp-infra-mongo creates with no roles before the migration runs. The passwords are throwaways
-        # of this disposable container.
+      - name: Create the logins as csp-infra-mongo does
+        # The owner for the executor (ADR-049), the login of the API with no role and the login of the relay, in catalog_db.
+        # The passwords are throwaways of this disposable container.
         run: |
-          docker exec "$MONGO" mongosh --quiet --eval "const d=db.getSiblingDB('$DB_NAME'); d.createUser({user:'worker_app',pwd:'throwaway-ci-only',roles:[]}); d.createUser({user:'catalog_app',pwd:'throwaway-ci-only',roles:[]})"
+          docker exec "$MONGO" mongosh --quiet -u ci_admin -p ci-admin-password --authenticationDatabase admin --eval "
+            const d = db.getSiblingDB('$DB_NAME');
+            d.createUser({user: 'catalog_migrator', pwd: 'ci-migrator-password', roles: [{role: 'dbOwner', db: '$DB_NAME'}]});
+            d.createUser({user: 'catalog_app', pwd: 'ci-app-password', roles: []});
+            d.createUser({user: 'worker_app', pwd: 'ci-worker-password', roles: []});"
 
       - name: Build the executor image
         run: docker build -f deploy/liquibase.Dockerfile -t catalog-db-migrate:ci deploy
@@ -54,14 +58,15 @@ jobs:
       - name: Apply, roll everything back, apply again
         run: |
           lb() {
-            docker run --rm --network "$NETWORK" -v "$PWD:/workspace:ro" --entrypoint liquibase catalog-db-migrate:ci \
+            docker run --rm --network "container:$MONGO" -v "$PWD:/workspace:ro" --entrypoint liquibase catalog-db-migrate:ci \
               --search-path=/workspace \
               --changelog-file=changelog/changelog-master.yaml \
               --database-changelog-table-name=databasechangelog_catalog \
               --database-changelog-lock-table-name=databasechangeloglock_catalog \
-              "--url=mongodb://$MONGO:27017/$DB_NAME?replicaSet=rs0" "$@"
+              "--url=mongodb://localhost:27017/$DB_NAME?replicaSet=rs0" \
+              --username=catalog_migrator --password=ci-migrator-password "$@"
           }
-          mongo_eval() { docker exec "$MONGO" mongosh --quiet "$DB_NAME" --eval "$1"; }
+          mongo_eval() { docker exec "$MONGO" mongosh --quiet -u ci_admin -p ci-admin-password --authenticationDatabase admin "$DB_NAME" --eval "$1"; }
 
           lb update
 
@@ -90,7 +95,9 @@ jobs:
 
           # The validator must accept valid documents, reject invalid ones and the named index must exist.
           docker cp tests "$MONGO":/tests
-          docker exec "$MONGO" mongosh --quiet "$DB_NAME" /tests/movies_schema_test.js
-          docker exec "$MONGO" mongosh --quiet "$DB_NAME" /tests/idempotency_key_schema_test.js
-          docker exec "$MONGO" mongosh --quiet "$DB_NAME" /tests/outbox_reader_role_test.js
-          docker exec "$MONGO" mongosh --quiet "$DB_NAME" /tests/catalog_writer_role_test.js
+          docker exec "$MONGO" mongosh --quiet -u ci_admin -p ci-admin-password --authenticationDatabase admin "$DB_NAME" /tests/movies_schema_test.js
+          docker exec "$MONGO" mongosh --quiet -u ci_admin -p ci-admin-password --authenticationDatabase admin "$DB_NAME" /tests/idempotency_key_schema_test.js
+          docker exec "$MONGO" mongosh --quiet -u ci_admin -p ci-admin-password --authenticationDatabase admin "$DB_NAME" /tests/outbox_reader_role_test.js
+          docker exec "$MONGO" mongosh --quiet -u ci_admin -p ci-admin-password --authenticationDatabase admin "$DB_NAME" /tests/catalog_writer_role_test.js
+          # The login of the API, with only catalog_writer, can read and write the collections and cannot change the structure.
+          docker exec "$MONGO" mongosh --quiet -u catalog_app -p ci-app-password --authenticationDatabase "$DB_NAME" "$DB_NAME" /tests/catalog_app_privileges_test.js
