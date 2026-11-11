@@ -87,6 +87,11 @@ if (info !== undefined) {
   rejects("rejects an identifier that is not a UUID", validMovie({ _id: "not-a-uuid" }));
   accepts("accepts a movie with a cast", validMovie({ cast: ["Synthetic Actor", "Another Actor"] }));
   accepts("accepts a movie with a null cast", validMovie({ cast: null }));
+  accepts("accepts a movie with a trailer link", validMovie({ trailer_url: "https://www.youtube.com/watch?v=synthetic" }));
+  accepts("accepts a movie with a null trailer link", validMovie({ trailer_url: null }));
+  accepts("accepts a trailer link of 2048 characters", validMovie({ trailer_url: "https://example.com/" + "x".repeat(2028) }));
+  rejects("rejects a trailer link over 2048 characters", validMovie({ trailer_url: "https://example.com/" + "x".repeat(2029) }));
+  rejects("rejects a trailer link that is not a string", validMovie({ trailer_url: 7 }));
   rejects("rejects a cast with an item that is not a string", validMovie({ cast: ["Synthetic Actor", 7] }));
   rejects("rejects more than 50 cast members", validMovie({
     cast: Array.from({ length: 51 }, (_, i) => `Actor ${i}`)
