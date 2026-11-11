@@ -6,6 +6,7 @@ introduces it.
 ## [Unreleased]
 
 ### Added
+- Field `trailer_url` of `movies` in the validator (`movies-006-validator-add-trailer-url`, with its inverse): an optional string of at most 2048 characters, `null` allowed, so the administrator can set the trailer link of a movie (DEC-015, HU-CATALOG-001). Movies stored before have no `trailer_url` and stay valid. Tested by `tests/movies_schema_test.js`.
 - `tests/catalog_app_privileges_test.js`, run by `db-ci.yml` as `catalog_app` after the migration (TD-042, ADR-049): the API login reads and writes the
   collections and cannot create an index, a user or a role, drop a collection or read another database.
 - Role `catalog_writer` (`find`, `insert`, `update` and `remove` on the collections of `catalog_db`, no inherited roles, no password)
