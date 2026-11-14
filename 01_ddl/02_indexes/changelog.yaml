@@ -1,0 +1,153 @@
+databaseChangeLog:
+  - changeSet:
+      id: movies-002-index-publication-status-deleted-at
+      author: karencaicedo1907
+      changes:
+        - createIndex:
+            collectionName: movies
+            keys: |
+              { publication_status: 1, deleted_at: 1 }
+            options: |
+              { name: "idx_movies_publication_status_deleted_at" }
+      rollback:
+        - dropIndex:
+            collectionName: movies
+            keys: |
+              { publication_status: 1, deleted_at: 1 }
+  - changeSet:
+      id: idempotency-key-002-index-created-at-ttl
+      author: karencaicedo1907
+      changes:
+        - createIndex:
+            collectionName: idempotency_key
+            keys: |
+              { created_at: 1 }
+            options: |
+              { name: "idx_idempotency_key_created_at", expireAfterSeconds: 604800 }
+      rollback:
+        - dropIndex:
+            collectionName: idempotency_key
+            keys: |
+              { created_at: 1 }
+  - changeSet:
+      id: rooms-002-index-name-unique
+      author: karencaicedo1907
+      changes:
+        - createIndex:
+            collectionName: rooms
+            keys: |
+              { name: 1 }
+            options: |
+              { name: "idx_rooms_name", unique: true }
+      rollback:
+        - dropIndex:
+            collectionName: rooms
+            keys: |
+              { name: 1 }
+  - changeSet:
+      id: showtimes-002-index-movie-id-starts-at
+      author: karencaicedo1907
+      changes:
+        - createIndex:
+            collectionName: showtimes
+            keys: |
+              { movie_id: 1, starts_at: 1 }
+            options: |
+              { name: "idx_showtimes_movie_id_starts_at" }
+      rollback:
+        - dropIndex:
+            collectionName: showtimes
+            keys: |
+              { movie_id: 1, starts_at: 1 }
+  - changeSet:
+      id: showtimes-003-index-room-id-starts-at
+      author: karencaicedo1907
+      changes:
+        - createIndex:
+            collectionName: showtimes
+            keys: |
+              { room_id: 1, starts_at: 1 }
+            options: |
+              { name: "idx_showtimes_room_id_starts_at" }
+      rollback:
+        - dropIndex:
+            collectionName: showtimes
+            keys: |
+              { room_id: 1, starts_at: 1 }
+  - changeSet:
+      id: outbox-event-002-index-created-at-id
+      author: karencaicedo1907
+      changes:
+        - createIndex:
+            collectionName: outbox_event
+            keys: |
+              { created_at: 1, _id: 1 }
+            options: |
+              { name: "idx_outbox_event_created_at_id" }
+      rollback:
+        - dropIndex:
+            collectionName: outbox_event
+            keys: |
+              { created_at: 1, _id: 1 }
+  - changeSet:
+      id: outbox-event-003-index-created-at-ttl
+      author: karencaicedo1907
+      changes:
+        - createIndex:
+            collectionName: outbox_event
+            keys: |
+              { created_at: 1 }
+            options: |
+              { name: "idx_outbox_event_created_at_ttl", expireAfterSeconds: 2592000 }
+      rollback:
+        - dropIndex:
+            collectionName: outbox_event
+            keys: |
+              { created_at: 1 }
+  - changeSet:
+      id: showtimes-004-index-status-starts-at
+      author: karencaicedo1907
+      changes:
+        - createIndex:
+            collectionName: showtimes
+            keys: |
+              { status: 1, starts_at: 1 }
+            options: |
+              { name: "idx_showtimes_status_starts_at" }
+      rollback:
+        - dropIndex:
+            collectionName: showtimes
+            keys: |
+              { status: 1, starts_at: 1 }
+  - changeSet:
+      id: movies-004-index-title-synopsis-text
+      author: karencaicedo1907
+      changes:
+        - createIndex:
+            collectionName: movies
+            keys: |
+              { title: "text", synopsis: "text" }
+            options: |
+              { name: "idx_movies_title_synopsis_text", default_language: "none" }
+      rollback:
+        - runCommand:
+            command: |
+              {
+                dropIndexes: "movies",
+                index: "idx_movies_title_synopsis_text"
+              }
+  - changeSet:
+      id: movies-005-index-publication-status-genres
+      author: karencaicedo1907
+      changes:
+        - createIndex:
+            collectionName: movies
+            keys: |
+              { publication_status: 1, genres: 1 }
+            options: |
+              { name: "idx_movies_publication_status_genres" }
+      rollback:
+        - dropIndex:
+            collectionName: movies
+            keys: |
+              { publication_status: 1, genres: 1 }

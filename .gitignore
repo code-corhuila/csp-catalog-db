@@ -1,0 +1,19 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+env/*.env
+*.pem
+*.key
+
+# Logs and temporary files
+liquibase-output.txt
+*.log
+*.tmp
+
+# IDE and operating system
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
